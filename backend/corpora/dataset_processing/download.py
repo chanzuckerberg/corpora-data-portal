@@ -11,11 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class ProgressTracker:
-    def __init__(self, file_size: int, artifact_bucket: str, cellxgene_bucket: str):
+    def __init__(self, file_size: int):
         self.file_size: int = file_size
         self._progress: int = 0
-        self.artifact_bucket = artifact_bucket
-        self.cellxgene_bucket = cellxgene_bucket
         self.progress_lock: threading.Lock = threading.Lock()  # prevent concurrent access of ProgressTracker._progress
         self.stop_updater: threading.Event = threading.Event()  # Stops the update_progress thread
         self.stop_downloader: threading.Event = threading.Event()  # Stops the downloader threads
@@ -134,8 +132,6 @@ def download(
     url: str,
     local_path: str,
     file_size: int,
-    artifact_bucket: str,
-    cellxgene_bucket: str,
     chunk_size: int = 10 * MB,
     update_frequency=3,
 ) -> dict:
@@ -156,7 +152,7 @@ def download(
         processing_status.upload_status = UploadStatus.UPLOADING
         processing_status.upload_progress = 0
         status_uuid = processing_status.id
-    progress_tracker = ProgressTracker(file_size, artifact_bucket, cellxgene_bucket)
+    progress_tracker = ProgressTracker(file_size)
     progress_thread = threading.Thread(
         target=updater,
         kwargs=dict(processing_status_uuid=status_uuid, tracker=progress_tracker, frequency=update_frequency),
