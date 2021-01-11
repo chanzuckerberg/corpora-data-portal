@@ -30,7 +30,7 @@
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "react-helmet": "^5.2.1",
-    "react-query": "^2.25.2",
+    "react-query": "^3.5.11",
     "styled-components": "^5.2.0",
     "theme-ui": "^0.3.1"
   },

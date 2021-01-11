@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryCache } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Collection, VISIBILITY_TYPE } from "src/common/entities";
 import { apiTemplateToUrl } from "src/common/utils/apiTemplateToUrl";
 import { API_URL } from "src/configs/configs";
@@ -41,11 +41,13 @@ export type CollectionError = {
   type: string;
 };
 
-async function fetchCollection(
-  _: unknown,
-  id: string,
-  visibility: VISIBILITY_TYPE
-): Promise<Collection> {
+async function fetchCollection({
+  queryKey,
+}: {
+  queryKey: [typeof USE_COLLECTION, string, VISIBILITY_TYPE];
+}): Promise<Collection> {
+  const [_, id, visibility] = queryKey;
+
   const baseUrl = apiTemplateToUrl(API_URL + API.COLLECTION, { id });
 
   const finalUrl =
@@ -93,11 +95,11 @@ export async function createCollection(payload: string): Promise<string> {
 }
 
 export function useCreateCollection() {
-  const queryCache = useQueryCache();
+  const queryClient = useQueryClient();
 
   return useMutation(createCollection, {
     onSuccess: () => {
-      queryCache.invalidateQueries(USE_COLLECTIONS);
+      queryClient.invalidateQueries([USE_COLLECTIONS]);
     },
   });
 }
@@ -149,11 +151,11 @@ export function useCollectionUploadLinks(
   id: string,
   visibility: VISIBILITY_TYPE
 ) {
-  const queryCache = useQueryCache();
+  const queryClient = useQueryClient();
 
   return useMutation(collectionUploadLinks, {
     onSuccess: () => {
-      queryCache.invalidateQueries([USE_COLLECTION, id, visibility]);
+      queryClient.invalidateQueries([USE_COLLECTION, id, visibility]);
     },
   });
 }
