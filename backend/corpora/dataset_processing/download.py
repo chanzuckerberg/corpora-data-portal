@@ -73,29 +73,26 @@ def updater(processing_status_uuid: str, tracker: ProgressTracker, frequency: fl
     """
 
     def _update():
-        with db_session_manager(commit=True) as db:
-            try:
-                curr_status = db.get(DbDatasetProcessingStatus, processing_status_uuid).upload_status
-                if curr_status is UploadStatus.CANCEL_PENDING:
-                    logger.info(f"cancelling the upload for {curr_status.dataset.id}")
-                    # set db to cancelled
-                    status = {
-                        DbDatasetProcessingStatus.upload_progress: 0,
-                        DbDatasetProcessingStatus.upload_status: UploadStatus.CANCELED,
-                        DbDatasetProcessingStatus.upload_message: "Canceled by user",
-                    }
 
-                    dataset = Dataset.get(curr_status.dataset.id)
-                    processing_status_updater(dataset.processing_status.id, status)
-                    tracker.cancel()
-                elif curr_status is UploadStatus.Canceled:
-                    return
-            # if _update is run before the downloader has committed the status to the db accessing the upload status
-            # will raise an attribute error
-            except AttributeError:
-                pass
+        with db_session_manager(commit=True) as db:
+            curr_status = db.get(DbDatasetProcessingStatus, processing_status_uuid).upload_status
         progress = tracker.progress()
-        if progress > 1:
+
+        if curr_status is UploadStatus.CANCEL_PENDING:
+            logger.info(f"cancelling the upload for {curr_status.dataset.id}")
+            # set db to cancelled
+            status = {
+                DbDatasetProcessingStatus.upload_progress: 0,
+                DbDatasetProcessingStatus.upload_status: UploadStatus.CANCELED,
+                DbDatasetProcessingStatus.upload_message: "Canceled by user",
+            }
+
+            dataset = Dataset.get(curr_status.dataset.id)
+            processing_status_updater(dataset.processing_status.id, status)
+            tracker.cancel()
+        elif curr_status is UploadStatus.CANCELED:
+            return
+        elif progress > 1:
             tracker.stop_downloader.set()
             message = "The expected file size is smaller than the actual file size."
             status = {
