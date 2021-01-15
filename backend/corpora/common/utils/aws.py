@@ -98,6 +98,15 @@ def delete_many_from_s3(bucket_name: str, dataset_uuid: str) -> None:
     """
     if not dataset_uuid:
         raise ValueError
-    s3 = boto3.resource("s3", endpoint_url=os.getenv("BOTO_ENDPOINT_URL"))
+
+    # Mock S3 service if we don't have a mock api already running
+    if os.getenv("BOTO_ENDPOINT_URL"):
+        s3_args = {"endpoint_url": os.getenv("BOTO_ENDPOINT_URL")}
+    else:
+        self.s3_mock = mock_s3()
+        self.s3_mock.start()
+        s3_args = {}
+
+    s3 = boto3.resource("s3", config=boto3.session.Config(signature_version="s3v4"), **s3_args)
     bucket = s3.Bucket(bucket_name)
     bucket.objects.filter(Prefix=f"{dataset_uuid}/").delete()

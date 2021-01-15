@@ -85,6 +85,7 @@ def logout() -> Response:
 def oauth2_callback() -> Response:
     """API call: redirect from the auth server after login successful."""
     config = CorporaAuthConfig()
+    print("URL", config.api_base_url)
     client = get_oauth_client(config)
     try:
         token = client.authorize_access_token()

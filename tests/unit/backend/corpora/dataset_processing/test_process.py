@@ -240,3 +240,8 @@ class TestDatasetProcessing(DataPortalTestCase):
         finally:
             if not os.getenv("BOTO_ENDPOINT_URL"):
                 s3_mock.stop()
+
+            response = s3.list_objects_v2(Bucket="test-bucket")
+            for object in response['Contents']:
+                s3.delete_object(Bucket="test-bucket", Key=object['Key'])
+            s3.delete_bucket(Bucket="test-bucket")

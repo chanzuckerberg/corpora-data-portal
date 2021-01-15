@@ -100,15 +100,19 @@ def get_auth_token(app):
     :param app: a chalice app.
     :return:
     """
+    print("INSIDE get_auth_token")
     headers = dict(host="localhost")
     response = app.get("/dp/v1/login", headers=headers)
+    print("RESPONSE1---> ", response.headers)
     location = response.headers["Location"]
     split = urllib.parse.urlsplit(location)
     args = dict(urllib.parse.parse_qsl(split.query))
 
     # follow redirect
     url = f"/dp/v1/oauth2/callback?code=fakecode&state={args['state']}"
+    print("URL:", url)
     response = app.get(url, headers=dict(host="localhost", Cookie=response.headers["Set-Cookie"]))
+    print("RESPONSE2---> ", response.headers)
     return response.headers["Set-Cookie"]
 
 

@@ -20,6 +20,7 @@
         "AccessTokenLifetime": 3600,
         "ClientClaimsPrefix": "",
 	"RequirePkce": false,
+        "AlwaysIncludeUserClaimsInIdToken": true,
         "Claims": [
             {
                 "Type": "json_claim",
