@@ -104,10 +104,10 @@ jobs:
       - uses: actions/checkout@v2
       - name: Prime the docker image cache
         run: |
-          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend
-          docker pull ${{ secrets.ECR_REPO }}/corpora-backend
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures
+          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0126-094011
+          docker pull ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0126-094011
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0126-094011
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0126-094011
       - name: Run tests in docker-compose
         run: |
           make local-start
