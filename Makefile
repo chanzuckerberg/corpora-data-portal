@@ -61,11 +61,11 @@ help: ## display help for this makefile
 oauth/pkcs12/certificate.pfx:
 	# All calls to the openssl cli happen in the oidc-server-mock container.
 	@echo "Generating certificates for local dev"
-	docker run -ti -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint bash soluto/oidc-server-mock ./generate_cert.sh
+	docker run -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint bash soluto/oidc-server-mock ./generate_cert.sh
 	@echo
 	@echo "Installing generated certs into the local keychain requires sudo access:"
 	sudo security add-trusted-cert -d -p ssl -k /Library/Keychains/System.keychain oauth/pkcs12/server.crt
-	docker run -ti -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint bash soluto/oidc-server-mock ./generate_pfx.sh
+	docker run -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint bash soluto/oidc-server-mock ./generate_pfx.sh
 
 .PHONY: local-init
 local-init: oauth/pkcs12/certificate.pfx ## Launch a new local dev env and populate it with test data.
@@ -92,7 +92,7 @@ local-stop: ## Stop the local dev environment.
 .PHONY: local-clean
 local-clean: ## Remove everything related to the local dev environment (including db data!)
 	-if [ -f ./oauth/pkcs12/server.crt ] ; then \
-	    export CERT=$$(docker run -ti -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint "" soluto/oidc-server-mock bash -c "openssl x509 -in server.crt -outform DER | sha1sum | cut -d ' ' -f 1"); \
+	    export CERT=$$(docker run -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint "" soluto/oidc-server-mock bash -c "openssl x509 -in server.crt -outform DER | sha1sum | cut -d ' ' -f 1"); \
 	    echo ""; \
 	    echo "Removing this certificate requires sudo access"; \
 	    sudo security delete-certificate -Z $${CERT} /Library/Keychains/System.keychain; \
