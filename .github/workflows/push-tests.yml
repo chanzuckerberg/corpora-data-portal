@@ -115,7 +115,8 @@ jobs:
           docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0126-094011 corpora-upload-failures:latest
       - name: Run tests in docker-compose
         run: |
-          make local-start
+          make local-init
+          make local-sync
           make local-unit-test
-          docker-compose exec backend cat /corpora-data-portal/.coverage > .coverage
+          docker-compose exec -T backend cat /corpora-data-portal/.coverage > .coverage
           bash <(curl -s https://codecov.io/bash) -cF backend,python,unitTest
