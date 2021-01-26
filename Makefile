@@ -62,10 +62,18 @@ oauth/pkcs12/certificate.pfx:
 	# All calls to the openssl cli happen in the oidc-server-mock container.
 	@echo "Generating certificates for local dev"
 	docker run -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint bash soluto/oidc-server-mock ./generate_cert.sh
-	@echo
-	@echo "Installing generated certs into the local keychain requires sudo access:"
-	sudo security add-trusted-cert -d -p ssl -k /Library/Keychains/System.keychain oauth/pkcs12/server.crt
+	@if [ "$$(uname -s)" == "Darwin" ]; then \
+		echo "Installing generated certs into the local keychain requires sudo access:"; \
+		sudo security add-trusted-cert -d -p ssl -k /Library/Keychains/System.keychain oauth/pkcs12/server.crt; \
+	fi
+	# Linux assumes Ubuntu
+	if [ "$$(uname -s)" == "Linux" ]; then \
+		sudo cp oauth/pkcs12/server.crt /usr/local/share/ca-certificates/; \
+		sudo update-ca-certificates; \
+	fi
 	docker run -v $(PWD)/oauth/pkcs12:/tmp/certs --workdir /tmp/certs --rm=true --entrypoint bash soluto/oidc-server-mock ./generate_pfx.sh
+	# On Linux, the pkcs12 directory gets written to with root permission. Force ownership to our user.
+	sudo chown -R $$(id -u):$$(id -g) $(PWD)/oauth/pkcs12
 
 .PHONY: local-init
 local-init: oauth/pkcs12/certificate.pfx ## Launch a new local dev env and populate it with test data.
