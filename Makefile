@@ -77,7 +77,7 @@ oauth/pkcs12/certificate.pfx:
 
 .PHONY: local-init
 local-init: oauth/pkcs12/certificate.pfx ## Launch a new local dev env and populate it with test data.
-	docker-compose up -d
+	docker-compose up -d frontend backend database oidc localstack
 	docker-compose exec -T backend pip3 install awscli
 	docker-compose exec -T backend /corpora-data-portal/scripts/setup_dev_data.sh
 
@@ -87,7 +87,7 @@ local-status: ## Show the status of the containers in the dev environment.
 
 .PHONY: local-sync
 local-sync: local-init ## Re-sync the local-environment state after modifying library deps or docker configs
-	DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker-compose build --build-arg BUILDKIT_INLINE_CACHE=1
+	DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker-compose build --build-arg BUILDKIT_INLINE_CACHE=1 frontend backend
 	docker-compose up -d
 
 .PHONY: local-start
