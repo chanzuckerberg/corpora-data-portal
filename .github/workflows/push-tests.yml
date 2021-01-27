@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - happy/cicd
+      - mbarrien/happy-cicd
   #     - main
   # pull_request:
   #   branches: "*"
