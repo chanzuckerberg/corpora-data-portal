@@ -694,7 +694,11 @@ components:
       type: apiKey
       in: cookie
       name: cxguser
+      {%- if deployment_stage == "test" %}
+      x-apikeyInfoFunc: corpora.lambdas.api.v1.authentication.unittest_apikey_info_func
+      {%- else %}
       x-apikeyInfoFunc: corpora.lambdas.api.v1.authentication.apikey_info_func
+      {%- endif %}
     dummyAuth:
       type: apiKey
       in: header

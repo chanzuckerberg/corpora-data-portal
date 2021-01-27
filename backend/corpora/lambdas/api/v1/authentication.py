@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import time
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -196,6 +197,20 @@ def apikey_info_func(tokenstr: str, required_scopes: list) -> dict:
     token = decode_token(tokenstr)
     payload = check_token(token)
     return payload
+
+
+def unittest_apikey_info_func(tokenstr: str, required_scopes: list) -> dict:
+    """Function used by connexion in the securitySchemes. Hard codes a fake value
+
+    The return dictionary must contains a "sub" key.
+
+    :params tokenstr:  A string representation of the token
+    :params required_scopes: List of required scopes (currently not used).
+    :return: The token dictionary.
+    """
+    return dict(
+        name="Fake User", sub="test_user_id", email="fake_user@email.com", email_verified=True, exp=time.time()
+    )
 
 
 def apikey_dummy_info_func(tokenstr: str, required_scopes: list) -> dict:

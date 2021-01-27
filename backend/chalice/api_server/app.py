@@ -44,7 +44,9 @@ def requires_auth():
 def create_flask_app():
     app = connexion.FlaskApp(f"{os.environ['APP_NAME']}-{os.environ['DEPLOYMENT_STAGE']}")
     swagger_spec_path = os.path.join(pkg_root, "config", f"{os.environ['APP_NAME']}.yml")
-    app.add_api(swagger_spec_path, validate_responses=True)
+    app.add_api(
+        swagger_spec_path, validate_responses=True,
+        arguments={"deployment_stage": os.environ['DEPLOYMENT_STAGE']})
     return app.app
 
 
