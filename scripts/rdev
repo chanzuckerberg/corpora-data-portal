@@ -516,7 +516,7 @@ def push(ctx, tag):
     if not tag:
         tag = generate_tag(ctx)
     print("Building images...")
-    subprocess.check_call(["docker-compose", "build"])
+    subprocess.check_call(["docker-compose", "build", "--build-arg", "BUILDKIT_INLINE_CACHE=1"])
     secrets = get_secrets(ctx)
     frontend_ecr = secrets["frontend_ecr"]
     backend_ecr = secrets["backend_ecr"]
