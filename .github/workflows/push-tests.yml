@@ -116,8 +116,10 @@ jobs:
           docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0127-080311
           docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0127-080311 corpora-upload-failures:latest
           docker image list
+      - uses: satackey/action-docker-layer-caching@v0.0.11
       - name: Run tests in docker-compose
         run: |
+          docker image list
           make local-sync
           make local-unit-test
           sudo chown $(id -u):$(id -g) .coverage
