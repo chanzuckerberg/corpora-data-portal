@@ -78,8 +78,8 @@ oauth/pkcs12/certificate.pfx:
 .PHONY: local-init
 local-init: oauth/pkcs12/certificate.pfx ## Launch a new local dev env and populate it with test data.
 	docker-compose up -d
-	docker-compose exec backend pip3 install awscli
-	docker-compose exec backend /corpora-data-portal/scripts/setup_dev_data.sh
+	docker-compose exec -T backend pip3 install awscli
+	docker-compose exec -T backend /corpora-data-portal/scripts/setup_dev_data.sh
 
 .PHONY: local-status
 local-status: ## Show the status of the containers in the dev environment.
@@ -121,15 +121,15 @@ local-shell: ## Open a command shell in one of the dev containers. ex: make loca
 
 .PHONY: local-unit-test
 local-unit-test: ## Run backend tests in the dev environment
-	docker-compose exec backend bash -c "cd /corpora-data-portal && make unittest"
+	docker-compose exec -T backend bash -c "cd /corpora-data-portal && make unittest"
 
 .PHONY: local-functional-test
 local-functional-test: ## Run functional tests in the dev environment
-	docker-compose exec backend bash -c "cd /corpora-data-portal && export DEPLOYMENT_STAGE=test && make functional-test"
+	docker-compose exec -T backend bash -c "cd /corpora-data-portal && export DEPLOYMENT_STAGE=test && make functional-test"
 
 .PHONY: local-smoke-test
 local-smoke-test: ## Run frontend/e2e tests in the dev environment
-	docker-compose exec frontend make smoke-test-with-local-dev
+	docker-compose exec -T frontend make smoke-test-with-local-dev
 
 .PHONY: local-dbconsole
 local-dbconsole: ## Connect to the local postgres database.
@@ -137,8 +137,8 @@ local-dbconsole: ## Connect to the local postgres database.
 
 .PHONY: local-uploadjob
 local-uploadjob: ## Run the upload task with a dataset_id and dropbox_url
-	docker-compose exec processing sh -c "rm -rf /local.*"
-	docker-compose exec -e DATASET_ID=$(DATASET_ID) -e DROPBOX_URL=$(DROPBOX_URL) processing python3 -m backend.corpora.dataset_processing.process
+	docker-compose exec -T processing sh -c "rm -rf /local.*"
+	docker-compose exec -T -e DATASET_ID=$(DATASET_ID) -e DROPBOX_URL=$(DROPBOX_URL) processing python3 -m backend.corpora.dataset_processing.process
 
 .PHONY: local-uploadfailure
 local-uploadfailure: ## Run the upload failure lambda with a dataset id and cause
