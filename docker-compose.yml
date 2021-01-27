@@ -26,7 +26,10 @@ services:
       - localstack:/tmp/localstack
   frontend:
     image: corpora-frontend
-    build: frontend
+    build:
+      context: frontend
+      cache_from:
+        - corpora-frontend:latest
     restart: always
     depends_on:
       - backend
@@ -40,6 +43,8 @@ services:
     image: corpora-upload-failures
     build:
       context: .
+      cache_from:
+        - corpora-upload-failures:latest
       dockerfile: Dockerfile.upload_failures
     restart: "no"
     ports:
@@ -64,6 +69,8 @@ services:
     image: corpora-processing
     build:
       context: .
+      cache_from:
+        - corpora-processing:latest
       dockerfile: Dockerfile.processing_image
     restart: "no"
     volumes:
@@ -83,7 +90,10 @@ services:
       - CELLXGENE_BUCKET=cellxgene-bucket
   backend:
     image: corpora-backend
-    build: .
+    build:
+      context: .
+      cache_from:
+        - corpora-backend:latest
     restart: always
     depends_on:
       - localstack

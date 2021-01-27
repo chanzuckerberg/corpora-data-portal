@@ -11,6 +11,8 @@ on:
 env:
   CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   DEPLOYMENT_STAGE: test
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   # lint:
