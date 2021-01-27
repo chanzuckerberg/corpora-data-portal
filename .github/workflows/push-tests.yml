@@ -107,14 +107,14 @@ jobs:
       - name: Prime the docker image cache
         run: |
           docker-compose pull
-          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0127-080311
-          docker tag ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0127-080311 corpora-frontend:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0127-080311
-          docker tag ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0127-080311 corpora-backend:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0127-080311
-          docker tag ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0127-080311 corpora-processing:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0127-080311
-          docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0127-080311 corpora-upload-failures:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend:jgadling-0127-125050
+          docker tag ${{ secrets.ECR_REPO }}/corpora-frontend:jgadling-0127-125050 corpora-frontend:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-backend:jgadling-0127-125050
+          docker tag ${{ secrets.ECR_REPO }}/corpora-backend:jgadling-0127-125050 corpora-backend:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:jgadling-0127-125050
+          docker tag ${{ secrets.ECR_REPO }}/corpora-upload:jgadling-0127-125050 corpora-processing:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:jgadling-0127-125050
+          docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:jgadling-0127-125050 corpora-upload-failures:latest
           docker image list
       - uses: satackey/action-docker-layer-caching@v0.0.11
       - name: Run tests in docker-compose
