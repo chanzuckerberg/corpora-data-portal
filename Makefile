@@ -87,7 +87,8 @@ local-status: ## Show the status of the containers in the dev environment.
 
 .PHONY: local-sync
 local-sync: local-init ## Re-sync the local-environment state after modifying library deps or docker configs
-	docker-compose up --build -d
+	DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker-compose build --build-arg BUILDKIT_INLINE_CACHE=1
+	docker-compose up -d
 
 .PHONY: local-start
 local-start: ## Start a local dev environment that's been stopped.
