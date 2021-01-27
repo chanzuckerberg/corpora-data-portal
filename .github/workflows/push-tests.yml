@@ -120,5 +120,5 @@ jobs:
         run: |
           make local-sync
           make local-unit-test
-          docker-compose exec -T backend cat /corpora-data-portal/.coverage > .coverage
+          sudo chown $(id -u):$(id -g) .coverage
           bash <(curl -s https://codecov.io/bash) -cF backend,python,unitTest
