@@ -105,14 +105,15 @@ jobs:
       - name: Prime the docker image cache
         run: |
           docker-compose pull
-          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0126-094011
-          docker tag ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0126-094011 corpora-frontend:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0126-094011
-          docker tag ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0126-094011 corpora-backend:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0126-094011
-          docker tag ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0126-094011 corpora-processing:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0126-094011
-          docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0126-094011 corpora-upload-failures:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0127-080311
+          docker tag ${{ secrets.ECR_REPO }}/corpora-frontend:mbarrientos-0127-080311 corpora-frontend:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0127-080311
+          docker tag ${{ secrets.ECR_REPO }}/corpora-backend:mbarrientos-0127-080311 corpora-backend:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0127-080311
+          docker tag ${{ secrets.ECR_REPO }}/corpora-upload:mbarrientos-0127-080311 corpora-processing:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0127-080311
+          docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:mbarrientos-0127-080311 corpora-upload-failures:latest
+          docker image list
       - name: Run tests in docker-compose
         run: |
           make local-init
