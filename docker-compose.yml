@@ -30,6 +30,8 @@ services:
       context: frontend
       cache_from:
         - corpora-frontend:latest
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     restart: always
     depends_on:
       - backend
@@ -46,6 +48,8 @@ services:
       cache_from:
         - corpora-upload-failures:latest
       dockerfile: Dockerfile.upload_failures
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     restart: "no"
     ports:
       - "9000:8080"
@@ -72,6 +76,8 @@ services:
       cache_from:
         - corpora-processing:latest
       dockerfile: Dockerfile.processing_image
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     restart: "no"
     volumes:
       - ./backend/corpora/dataset_processing:/backend/corpora/dataset_processing
@@ -94,6 +100,8 @@ services:
       context: .
       cache_from:
         - corpora-backend:latest
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     restart: always
     depends_on:
       - localstack
