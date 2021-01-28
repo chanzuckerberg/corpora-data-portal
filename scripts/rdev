@@ -520,7 +520,7 @@ def push(ctx, tag):
     env = dict(os.environ)   # Make a copy of the current environment
     env['DOCKER_BUILDKIT'] = "1"
     env['COMPOSE_DOCKER_CLI_BUILD'] = "1"
-    subprocess.check_call(["docker-compose", "build", "--build-arg", "BUILDKIT_INLINE_CACHE=1"], env=env)
+    subprocess.check_call(["docker-compose", "build"], env=env)
     secrets = get_secrets(ctx)
     frontend_ecr = secrets["frontend_ecr"]
     backend_ecr = secrets["backend_ecr"]
