@@ -111,6 +111,10 @@ jobs:
           docker tag ${{ secrets.ECR_REPO }}/corpora-frontend:jgadling-0127-125050 corpora-frontend:latest
           docker pull ${{ secrets.ECR_REPO }}/corpora-backend:jgadling-0127-125050
           docker tag ${{ secrets.ECR_REPO }}/corpora-backend:jgadling-0127-125050 corpora-backend:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:jgadling-0127-125050
+          docker tag ${{ secrets.ECR_REPO }}/corpora-upload:jgadling-0127-125050 corpora-processing:latest
+          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:jgadling-0127-125050
+          docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:jgadling-0127-125050 corpora-upload-failures:latest
       - name: Run tests in docker-compose
         run: |
           docker image list
