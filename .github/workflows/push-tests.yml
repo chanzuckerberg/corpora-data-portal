@@ -32,10 +32,16 @@ jobs:
           registry: ${{ secrets.ECR_REPO }}
       - uses: actions/checkout@v2
       - name: Lint Python
+        env:
+          ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env
           docker-compose run --no-deps backend make -C /corpora-data-portal lint
       - name: Lint frontend
+        env:
+          ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env
           docker-compose run --no-deps frontend make lint
 
   smoke-test:
