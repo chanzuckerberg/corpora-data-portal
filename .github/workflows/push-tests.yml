@@ -104,20 +104,12 @@ jobs:
         with:
           registry: ${{ secrets.ECR_REPO }}
       - uses: actions/checkout@v2
-      - name: Prime the docker image cache
-        run: |
-          docker-compose pull
-          docker pull ${{ secrets.ECR_REPO }}/corpora-frontend:jgadling-0127-125050
-          docker tag ${{ secrets.ECR_REPO }}/corpora-frontend:jgadling-0127-125050 corpora-frontend:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-backend:jgadling-0127-125050
-          docker tag ${{ secrets.ECR_REPO }}/corpora-backend:jgadling-0127-125050 corpora-backend:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload:jgadling-0127-125050
-          docker tag ${{ secrets.ECR_REPO }}/corpora-upload:jgadling-0127-125050 corpora-processing:latest
-          docker pull ${{ secrets.ECR_REPO }}/corpora-upload-failures:jgadling-0127-125050
-          docker tag ${{ secrets.ECR_REPO }}/corpora-upload-failures:jgadling-0127-125050 corpora-upload-failures:latest
       - name: Run tests in docker-compose
+        env:
+          ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
           docker image list
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env
           make local-sync
           make local-unit-test
           sudo chown $(id -u):$(id -g) .coverage
