@@ -14,6 +14,18 @@ deploy: init retrieve-vars
 init:
 	npm install
 
+.PHONY: lint
+lint:
+	npm run prettier-check
+	npm run lint
+
+local-lint:
+	ln -sf /opt/node_app/node_modules/* ./node_modules/.
+	npm install
+	npm run prettier-check
+	npm run lint
+
+
 .PHONY: clean
 clean:
 	npm run clean
