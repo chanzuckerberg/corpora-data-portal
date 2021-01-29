@@ -1,4 +1,9 @@
 SHELL:=/bin/bash
+  # Force using BuildKit instead of normal Docker, required so that metadata
+  # is written/read to allow us to use layers of previous builds as cache.
+export DOCKER_BUILDKIT:=1
+export COMPOSE_DOCKER_CLI_BUILD:=1
+
 
 .PHONY: fmt
 fmt:
@@ -150,3 +155,12 @@ local-uploadjob: ## Run the upload task with a dataset_id and dropbox_url
 .PHONY: local-uploadfailure
 local-uploadfailure: ## Run the upload failure lambda with a dataset id and cause
 	curl -v -XPOST "http://127.0.0.1:9000/2015-03-31/functions/function/invocations" -d '{"dataset_uuid": "$(DATASET_UUID)", "error": {"Cause": "$(CAUSE)"}}'
+
+.PHONY: tag-and-push
+tag-and-push:
+	for container in backend frontend upload upload-failures; do \
+		for tag in "sha-$${GITHUB_SHA:0:8}" "build-$${GITHUB_RUN_NUMBER}" "branch-$$(echo $${GITHUB_REF#refs/heads/} | sed 's/[\+\/]/-/g')" ci; do \
+			docker tag $${ECR_REPO}/corpora-$${container}:latest $${ECR_REPO}/corpora-$${container}:$${tag}; \
+			docker push $${ECR_REPO}/corpora-$${container}:$${tag}; \
+		done; \
+	done
