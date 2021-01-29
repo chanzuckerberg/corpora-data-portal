@@ -95,8 +95,6 @@ jobs:
           echo "DOCKER_REPO=${ECR_REPO}/" > .env
           make local-sync
           make local-unit-test
-          sudo chown $(id -u):$(id -g) .coverage
-          bash <(curl -s https://codecov.io/bash) -cF backend,python,unitTest
 
   push-image:
     needs:
