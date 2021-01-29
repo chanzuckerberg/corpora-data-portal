@@ -13,7 +13,7 @@
     "container_registries": {
         "corpora-frontend": "${frontend_ecr}",
         "corpora-backend": "${backend_ecr}",
-        "corpora-processing": "${upload_ecr}",
+        "corpora-upload": "${upload_ecr}",
         "corpora-upload-failures": "${upload_failures_ecr}"
     },
     "tasks": {
