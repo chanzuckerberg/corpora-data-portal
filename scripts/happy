@@ -302,8 +302,13 @@ class StackMgr:
         # self.read_prefix = f"/happy/{self.config.env}/stacks"
         self._stacks = {}
         self.creator_workspace_name = f"env-{self.config.env}"
-        secrets = ctx.obj["secret_mgr"].secrets
-        self.tfe_api = TfeApi(secrets["tfe_url"], secrets["tfe_org"])
+        self.tfe_api = None
+
+    def get_tfe_api(self):
+        if not self.tfe_api:
+            secrets = ctx.obj["secret_mgr"].secrets
+            self.tfe_api = TfeApi(secrets["tfe_url"], secrets["tfe_org"])
+        return self.tfe_api
 
     def remove(self, stack_name):
         self._stacks = {} # Force a refresh of stacks.
@@ -336,9 +341,10 @@ class StackMgr:
     def _resync(self, wait=True):
         """Invoke a specific TFE workspace that creates/deletes TFE workspaces, with prepopulated variables for identifier tokens."""
         print("Resyncing workspaces")
-        workspace = self.tfe_api.workspaces[self.creator_workspace_name]
+        tfe_api = self.get_tfe_api()
+        workspace = tfe_api.workspaces[self.creator_workspace_name]
         workspace.run()
-        self.tfe_api.reset_workspaces_cache()
+        tfe_api.reset_workspaces_cache()
         if wait:
             return workspace.wait()
         return True
@@ -357,7 +363,8 @@ class StackMgr:
 
     def get_stack_workspace(self, stack_name):
         workspace_name = f"{self.config.env}-{stack_name}"
-        return self.tfe_api.workspaces.get(workspace_name)
+        tfe_api = self.get_tfe_api()
+        return tfe_api.workspaces.get(workspace_name)
 
 
 # Singleton for handling aws sessions since this is oddly slow.
@@ -605,6 +612,7 @@ def cli(ctx, profile, env):
     ctx.obj["secret_mgr"] = SecretMgr(ctx)
     ctx.obj["config"] = config
     ctx.obj["aws_profile"] = profile
+    # These aren't lazy-instantiating!
     ctx.obj["stack_mgr"] = StackMgr(ctx)
     ctx.obj["orchestrator"] = Orchestrator(ctx)
 
@@ -654,13 +662,41 @@ def generate_tag(ctx):
 class Orchestrator:
     def __init__(self, ctx):
         self.ctx = ctx
-        self.secrets = ctx.obj["secret_mgr"].secrets
+        self.secrets = None
+
+    def get_secrets(self):
+        if not self.secrets:
+            self.secrets = ctx.obj["secret_mgr"].secrets
+        return self.secrets
+
+    def ssh(self, service_name):
+        ecs_client = AwsSession.get_client(self.ctx, "ecs")
+        tasks = ecs_client.list_tasks(cluster="happy-dp", serviceName=service_name)["taskArns"]
+        print("Found tasks: ")
+        taskinfo = ecs_client.describe_tasks(cluster="happy-dp", tasks=tasks)["tasks"]
+        tp = TablePrinter(["Task ID", "Started", "Status"])
+        containers = []
+        for task in taskinfo:
+            task_id = task["taskArn"].split("/")[-1]
+            tp.add_row([task_id, task["startedAt"].strftime('%m/%d %H:%M'), task["lastStatus"]])
+            containers.append({"host": task["containerInstanceArn"], "container": task["containers"][0]["runtimeId"], "arn": task["taskArn"]})
+        tp.print()
+        print()
+        for container in containers:
+            instance_info = ecs_client.describe_container_instances(cluster="happy-dp", containerInstances=[container["host"]])
+            ec2_instance = instance_info["containerInstances"][0]["ec2InstanceId"]
+            ec2_client = AwsSession.get_client(self.ctx, "ec2")
+            hostinfo = ec2_client.describe_instances(InstanceIds=[ec2_instance])
+            ip = hostinfo["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
+            print(f"Connecting to {container['arn']}")
+            os.execvp("ssh", ["ssh", "-t", ip, "sudo", "docker", "exec", "-ti", container['container'], "/bin/bash"])
 
     def run_task(self, taskdef_arn, wait=False, show_logs=True):
         """Run a one-off ECS task and optionally wait"""
-        cluster_arn = self.secrets["cluster_arn"]
-        subnets = self.secrets["subnets"]
-        security_groups = self.secrets["security_groups"]
+        secrets = self.get_secrets()
+        cluster_arn = secrets["cluster_arn"]
+        subnets = secrets["subnets"]
+        security_groups = secrets["security_groups"]
         print(f"Using task definition {taskdef_arn}")
         ecs_client = AwsSession.get_client(self.ctx, "ecs")
         output = ecs_client.run_task(
@@ -747,6 +783,15 @@ def migrate(ctx, stack_name, reset):
         run_tasks(ctx, stack, "delete", wait=True, show_logs=True)
     run_tasks(ctx, stack, "migrate", wait=True, show_logs=True)
 
+
+@cli.command()
+@click.argument("stack_name")
+@click.argument("service")
+@click.option("--instanceid", help="Choose a specific instance")
+@click.pass_context
+def ssh(ctx, stack_name, service, instanceid):
+    orchestrator = ctx.obj["orchestrator"]
+    orchestrator.ssh(f"{stack_name}-{service}")
 
 @cli.command()
 @click.argument("stack_name")
