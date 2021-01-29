@@ -29,7 +29,7 @@ services:
     build:
       context: frontend
       cache_from:
-        - "${DOCKER_REPO}corpora-frontend:main"
+        - "${DOCKER_REPO}corpora-frontend:branch-main"
       args:
         - BUILDKIT_INLINE_CACHE=1
     restart: always
@@ -46,7 +46,7 @@ services:
     build:
       context: .
       cache_from:
-        - "${DOCKER_REPO}corpora-upload-failures:main"
+        - "${DOCKER_REPO}corpora-upload-failures:branch-main"
       dockerfile: Dockerfile.upload_failures
       args:
         - BUILDKIT_INLINE_CACHE=1
@@ -74,7 +74,7 @@ services:
     build:
       context: .
       cache_from:
-        - "${DOCKER_REPO}corpora-upload:main"
+        - "${DOCKER_REPO}corpora-upload:branch-main"
       dockerfile: Dockerfile.processing_image
       args:
         - BUILDKIT_INLINE_CACHE=1
@@ -99,7 +99,7 @@ services:
     build:
       context: .
       cache_from:
-        - "${DOCKER_REPO}corpora-backend:main"
+        - "${DOCKER_REPO}corpora-backend:branch-main"
       args:
         - BUILDKIT_INLINE_CACHE=1
     restart: always
