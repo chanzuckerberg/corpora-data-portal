@@ -142,3 +142,4 @@ dmypy.json
 
 .terraform
 .envrc
+.env.ecr

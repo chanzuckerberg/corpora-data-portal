@@ -3,6 +3,7 @@ SHELL:=/bin/bash
   # is written/read to allow us to use layers of previous builds as cache.
 export DOCKER_BUILDKIT:=1
 export COMPOSE_DOCKER_CLI_BUILD:=1
+export COMPOSE_OPTS:=--env .env.ecr
 
 
 .PHONY: fmt
@@ -80,9 +81,12 @@ oauth/pkcs12/certificate.pfx:
 	# On Linux, the pkcs12 directory gets written to with root permission. Force ownership to our user.
 	sudo chown -R $$(id -u):$$(id -g) $(PWD)/oauth/pkcs12
 
+.env.ecr:
+	echo DOCKER_REPO=$$(aws sts get-caller-identity --profile single-cell-dev | jq -r .Account).dkr.ecr.us-west-2.amazonaws.com/ > .env.ecr
+
 .PHONY: local-init
-local-init: oauth/pkcs12/certificate.pfx ## Launch a new local dev env and populate it with test data.
-	docker-compose up -d frontend backend database oidc localstack
+local-init: oauth/pkcs12/certificate.pfx .env.ecr ## Launch a new local dev env and populate it with test data.
+	docker-compose $(COMPOSE_OPTS) up -d frontend backend database oidc localstack
 	docker-compose exec -T backend pip3 install awscli
 	docker-compose exec -T backend /corpora-data-portal/scripts/setup_dev_data.sh
 
@@ -91,13 +95,13 @@ local-status: ## Show the status of the containers in the dev environment.
 	docker ps -a | grep --color=no -e 'CONTAINER\|corpora-data-portal'
 
 .PHONY: local-sync
-local-sync: local-init ## Re-sync the local-environment state after modifying library deps or docker configs
-	docker-compose build --build-arg frontend backend
-	docker-compose up -d
+local-sync: local-init .env.ecr ## Re-sync the local-environment state after modifying library deps or docker configs
+	docker-compose $(COMPOSE_OPTS) build --build-arg frontend backend
+	docker-compose $(COMPOSE_OPTS) up -d
 
 .PHONY: local-start
-local-start: ## Start a local dev environment that's been stopped.
-	docker-compose up -d
+local-start: .env.ecr ## Start a local dev environment that's been stopped.
+	docker-compose $(COMPOSE_OPTS) up -d
 
 .PHONY: local-stop
 local-stop: ## Stop the local dev environment.
