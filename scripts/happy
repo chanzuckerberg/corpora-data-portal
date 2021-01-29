@@ -306,7 +306,7 @@ class StackMgr:
 
     def get_tfe_api(self):
         if not self.tfe_api:
-            secrets = ctx.obj["secret_mgr"].secrets
+            secrets = self.ctx.obj["secret_mgr"].secrets
             self.tfe_api = TfeApi(secrets["tfe_url"], secrets["tfe_org"])
         return self.tfe_api
 
