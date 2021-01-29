@@ -20,8 +20,6 @@ lint:
 	npm run lint
 
 local-lint:
-	ln -sf /opt/node_app/node_modules/* ./node_modules/.
-	npm install
 	npm run prettier-check
 	npm run lint
 

@@ -42,7 +42,6 @@ jobs:
           ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
           echo "DOCKER_REPO=${ECR_REPO}/" > .env
-          cp frontend/src/configs/local.js frontend/src/configs/configs.js
           docker-compose run --no-deps --rm frontend make local-lint
 
   smoke-test:
