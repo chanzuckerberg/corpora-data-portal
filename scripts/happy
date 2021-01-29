@@ -941,9 +941,10 @@ def list_command(ctx):
 
 
 @cli.command()
-@click.option("--tag", help="Tag name for docker image. Leave empty to generate one automatically.", default=None)
+@click.option("--tag", help="Tag name for existing docker image. Leave empty to generate one automatically.", default=None)
+@click.option("--extra-tag", help="Extra tags to apply and push to the docker repo.", multiple=True)
 @click.pass_context
-def push(ctx, tag):
+def push(ctx, tag, extra_tag):
     """Build and push docker images to ECR"""
     config = ctx.obj["config"]
     container_registries = config.container_registries
@@ -973,13 +974,16 @@ def push(ctx, tag):
     pwd = auth_token.split(':')[1].encode()
     cmd = subprocess.run(["docker", "login", "--username", "AWS", "--password-stdin", first_registry], input=pwd)
 
+    all_tags = [tag] + (extra_tags or [])
     print("Tagging images...")
     for image, registry in container_registries.items():
-        subprocess.check_call(["docker", "tag", f"{image}:latest", f"{registry}:{tag}"])
+        for current_tag in all_tags:
+            subprocess.check_call(["docker", "tag", f"{image}:latest", f"{registry}:{current_tag}"])
     print("Pushing images...")
     for registry in container_registries.values():
-        subprocess.check_call(["docker", "push", f"{registry}:{tag}"])
-    print(f"Built and pushed docker images with tag: {tag}")
+        for current_tag in all_tags:
+            subprocess.check_call(["docker", "push", f"{registry}:{current_tag}"])
+    print(f"Built and pushed docker images with tags: {all_tags}")
 
 
 @cli.command()

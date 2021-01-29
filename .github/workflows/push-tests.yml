@@ -127,9 +127,7 @@ jobs:
       - name: Docker Tags
         id: docker_tags
         shell: bash
-        env:
-          ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
-          echo "DOCKER_REPO=${ECR_REPO}/" > .env
-          make tag-and-push
+          pip install -r .happy/requirements.txt
+          scripts/happy push --extra-tag sha-${GITHUB_SHA:0:8} --extra-tag build-${GITHUB_RUN_NUMBER} --extra-tag branch-$(echo ${GITHUB_REF#refs/heads/} | sed 's/[\+\/]/-/g') --extra-tag ci
           docker image list
