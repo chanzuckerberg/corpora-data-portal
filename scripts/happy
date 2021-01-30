@@ -601,14 +601,16 @@ class TfeApi:
 
 
 @click.group()
-@click.option("--profile", default=None, help="AWS profile to use")
+@click.option("--profile", default=None, help="AWS profile to use. Explicitly passing empty string uses Boto default credentials resolver.")
 @click.option("--env", default=None, help="Switch happy envs")
 @click.pass_context
 def cli(ctx, profile, env):
     ctx.ensure_object(dict)
     config = HappyConfig(env=env, ctx=ctx)
-    if not profile:
+    if profile is None:
         profile = config.aws_profile
+    elif profile == "":
+        profile = None
     ctx.obj["secret_mgr"] = SecretMgr(ctx)
     ctx.obj["config"] = config
     ctx.obj["aws_profile"] = profile

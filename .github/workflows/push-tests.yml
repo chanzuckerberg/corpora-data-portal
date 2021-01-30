@@ -129,5 +129,5 @@ jobs:
         shell: bash
         run: |
           pip install -r .happy/requirements.txt
-          scripts/happy push --extra-tag sha-${GITHUB_SHA:0:8} --extra-tag build-${GITHUB_RUN_NUMBER} --extra-tag branch-$(echo ${GITHUB_REF#refs/heads/} | sed 's/[\+\/]/-/g') --extra-tag ci
+          scripts/happy --profile="" push --extra-tag sha-${GITHUB_SHA:0:8} --extra-tag build-${GITHUB_RUN_NUMBER} --extra-tag branch-$(echo ${GITHUB_REF#refs/heads/} | sed 's/[\+\/]/-/g') --extra-tag ci
           docker image list
