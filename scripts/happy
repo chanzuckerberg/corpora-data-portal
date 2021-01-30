@@ -945,8 +945,9 @@ def list_command(ctx):
 @cli.command()
 @click.option("--tag", help="Tag name for existing docker image. Leave empty to generate one automatically.", default=None)
 @click.option("--extra-tag", help="Extra tags to apply and push to the docker repo.", multiple=True)
+@click.option("--compose-env", help="Environment file to pass to docker compose", default=None)
 @click.pass_context
-def push(ctx, tag, extra_tag):
+def push(ctx, tag, extra_tag, compose_env):
     """Build and push docker images to ECR"""
     config = ctx.obj["config"]
     container_registries = config.container_registries
@@ -958,9 +959,12 @@ def push(ctx, tag, extra_tag):
     env = dict(os.environ)   # Make a copy of the current environment
     env['DOCKER_BUILDKIT'] = "1"
     env['COMPOSE_DOCKER_CLI_BUILD'] = "1"
-    subprocess.check_call(["docker-compose", "build"], env=env)
+    env_args = []
+    if compose_env:
+        env_args = ["-env", compose_env]
+    cmd = ["docker-compose"] + env_args + ["build"]
+    subprocess.check_call(cmd, env=env)
 
-    ecr_re = r"(?P<registry>\d*\.dkr.ecr.(?P<region>[^.]*)\.amazonaws.com)/.*"
     print("logging in to ECR...")
     # Assumption: All the ECR registries are within the same AWS account as the one configured
     # for the profile, and in the same region as the default one.
@@ -976,7 +980,8 @@ def push(ctx, tag, extra_tag):
     pwd = auth_token.split(':')[1].encode()
     cmd = subprocess.run(["docker", "login", "--username", "AWS", "--password-stdin", first_registry], input=pwd)
 
-    all_tags = [tag] + (extra_tags or [])
+    # extra_tag is a tuple
+    all_tags = [tag] + (list(extra_tag) or [])
     print("Tagging images...")
     for image, registry in container_registries.items():
         for current_tag in all_tags:
