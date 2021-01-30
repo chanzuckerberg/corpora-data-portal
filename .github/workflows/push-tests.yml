@@ -37,13 +37,13 @@ jobs:
         env:
           ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
-          echo "DOCKER_REPO=${ECR_REPO}/" > .env
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
           docker-compose run --no-deps --rm backend make -C /corpora-data-portal lint
       - name: Lint frontend
         env:
           ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
-          echo "DOCKER_REPO=${ECR_REPO}/" > .env
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
           docker-compose run --no-deps --rm frontend make local-lint
 
   smoke-test:
@@ -67,7 +67,7 @@ jobs:
           ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
           docker image list
-          echo "DOCKER_REPO=${ECR_REPO}/" > .env
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
           make local-sync
           make local-smoke-test
 
@@ -92,7 +92,7 @@ jobs:
           ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
           docker image list
-          echo "DOCKER_REPO=${ECR_REPO}/" > .env
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
           make local-sync
           make local-unit-test
 
@@ -122,7 +122,7 @@ jobs:
         env:
           ECR_REPO: ${{ secrets.ECR_REPO }}
         run: |
-          echo "DOCKER_REPO=${ECR_REPO}/" > .env
+          echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
           docker-compose build
       - name: Docker Tags
         id: docker_tags
