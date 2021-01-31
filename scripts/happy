@@ -665,18 +665,22 @@ def generate_tag(ctx):
 class Orchestrator:
     def __init__(self, ctx):
         self.ctx = ctx
-        self.secrets = None
+        self._secrets = None
 
-    def get_secrets(self):
-        if not self.secrets:
-            self.secrets = ctx.obj["secret_mgr"].secrets
-        return self.secrets
+    @property
+    def secrets(self):
+        if not self._secrets:
+            self._secrets = self.ctx.obj["secret_mgr"].secrets
+        return self._secrets
 
-    def ssh(self, service_name):
+    def shell(self, stack_name, service):
+        cluster_arn = self.secrets["cluster_arn"]
+        service_name = f"{stack_name}-{service}"
+
         ecs_client = AwsSession.get_client(self.ctx, "ecs")
-        tasks = ecs_client.list_tasks(cluster="happy-dp", serviceName=service_name)["taskArns"]
+        tasks = ecs_client.list_tasks(cluster=cluster_arn, serviceName=service_name)["taskArns"]
         print("Found tasks: ")
-        taskinfo = ecs_client.describe_tasks(cluster="happy-dp", tasks=tasks)["tasks"]
+        taskinfo = ecs_client.describe_tasks(cluster=cluster_arn, tasks=tasks)["tasks"]
         tp = TablePrinter(["Task ID", "Started", "Status"])
         containers = []
         for task in taskinfo:
@@ -686,13 +690,21 @@ class Orchestrator:
         tp.print()
         print()
         for container in containers:
-            instance_info = ecs_client.describe_container_instances(cluster="happy-dp", containerInstances=[container["host"]])
+            instance_info = ecs_client.describe_container_instances(cluster=cluster_arn, containerInstances=[container["host"]])
             ec2_instance = instance_info["containerInstances"][0]["ec2InstanceId"]
             ec2_client = AwsSession.get_client(self.ctx, "ec2")
             hostinfo = ec2_client.describe_instances(InstanceIds=[ec2_instance])
             ip = hostinfo["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
             print(f"Connecting to {container['arn']}")
             os.execvp("ssh", ["ssh", "-t", ip, "sudo", "docker", "exec", "-ti", container['container'], "/bin/bash"])
+
+    def logs(self, stack_name, service, since):
+        run_aws_cmd(
+            self.ctx,
+            ["logs", "tail", "--since", since, "--follow", f"{stack_name}/{service}"],
+            return_output=False,
+            json_output=False,
+        )
 
     def run_task(self, taskdef_arn, wait=False, show_logs=True):
         """Run a one-off ECS task and optionally wait"""
@@ -823,9 +835,9 @@ def migrate(ctx, stack_name, reset):
 @click.argument("service")
 @click.option("--instanceid", help="Choose a specific instance")
 @click.pass_context
-def ssh(ctx, stack_name, service, instanceid):
+def shell(ctx, stack_name, service, instanceid):
     orchestrator = ctx.obj["orchestrator"]
-    orchestrator.ssh(f"{stack_name}-{service}")
+    orchestrator.shell(stack_name, service)
 
 @cli.command()
 @click.argument("stack_name")
@@ -834,12 +846,8 @@ def ssh(ctx, stack_name, service, instanceid):
 @click.pass_context
 def logs(ctx, stack_name, service, since):
     """Tail the logs of a service (frontend, backend, upload, migrations)"""
-    run_aws_cmd(
-        ctx,
-        ["logs", "tail", "--since", since, "--follow", f"{stack_name}/{service}"],
-        return_output=False,
-        json_output=False,
-    )
+    orchestrator = ctx.obj["orchestrator"]
+    orchestrator.logs(stack_name, service, logs)
 
 @cli.command()
 @click.argument("stack_name")
