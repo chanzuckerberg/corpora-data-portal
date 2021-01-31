@@ -82,9 +82,7 @@ oauth/pkcs12/certificate.pfx:
 	sudo chown -R $$(id -u):$$(id -g) $(PWD)/oauth/pkcs12
 
 .env.ecr:
-	if [ ! -f ".env.ecr" ]; then \
-		echo DOCKER_REPO=$$(aws sts get-caller-identity --profile single-cell-dev | jq -r .Account).dkr.ecr.us-west-2.amazonaws.com/ > .env.ecr; \
-	fi
+	echo DOCKER_REPO=$$(aws sts get-caller-identity --profile single-cell-dev | jq -r .Account).dkr.ecr.us-west-2.amazonaws.com/ > .env.ecr;
 
 .PHONY: local-init
 local-init: oauth/pkcs12/certificate.pfx .env.ecr ## Launch a new local dev env and populate it with test data.
