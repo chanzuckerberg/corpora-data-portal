@@ -200,13 +200,16 @@ class Stack:
     def __init__(self, stack_mgr, stack_name):
         self.stack_mgr = stack_mgr
         self.stack_name = stack_name
+        self._workspace = None
 
         self._meta = None
 
     @property
     def workspace(self):
         # If the corresponding workspace is missing from TFE, we will intentionally return None
-        return self.stack_mgr.get_stack_workspace(self.stack_name)
+        if not self._workspace:
+            self._workspace = self.stack_mgr.get_stack_workspace(self.stack_name)
+        return self._workspace
 
     @property
     def outputs(self):
@@ -343,9 +346,8 @@ class StackMgr:
         """Invoke a specific TFE workspace that creates/deletes TFE workspaces, with prepopulated variables for identifier tokens."""
         print("Resyncing workspaces")
         tfe_api = self.get_tfe_api()
-        workspace = tfe_api.workspaces[self.creator_workspace_name]
+        workspace = tfe_api.get_workspace(self.creator_workspace_name)
         workspace.run()
-        tfe_api.reset_workspaces_cache()
         if wait:
             return workspace.wait()
         return True
@@ -365,7 +367,7 @@ class StackMgr:
     def get_stack_workspace(self, stack_name):
         workspace_name = f"{self.config.env}-{stack_name}"
         tfe_api = self.get_tfe_api()
-        return tfe_api.workspaces.get(workspace_name)
+        return tfe_api.get_workspace(workspace_name)
 
 
 # Singleton for handling aws sessions since this is oddly slow.
@@ -567,7 +569,6 @@ class TfeApi:
         self.url = url
         self.org = org
         self._tfc = None
-        self._workspaces = None
 
     @property
     def tfc(self):
@@ -590,15 +591,9 @@ class TfeApi:
         self._tfc = tfc
         return tfc
 
-    @property
-    def workspaces(self):
-        if not self._workspaces:
-            workspaces = self.tfc.workspaces.list_all()
-            self._workspaces = {workspace["attributes"]["name"]: TFEWorkspace(self.tfc, workspace) for workspace in workspaces}
-        return self._workspaces
-
-    def reset_workspaces_cache(self):
-        self._workspaces = None
+    def get_workspace(self, workspace_name):
+        workspace = self.tfc.workspaces.show(workspace_name)
+        return TFEWorkspace(self.tfc, workspace["data"])
 
 
 @click.group()
@@ -708,7 +703,7 @@ class Orchestrator:
 
     def run_task(self, taskdef_arn, wait=False, show_logs=True):
         """Run a one-off ECS task and optionally wait"""
-        secrets = self.get_secrets()
+        secrets = self.secrets
         cluster_arn = secrets["cluster_arn"]
         subnets = secrets["subnets"]
         security_groups = secrets["security_groups"]
