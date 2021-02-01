@@ -68,6 +68,7 @@ jobs:
         run: |
           docker image list
           echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
+          pip install -r .happy/requirements.txt
           make local-sync
           make local-smoke-test
 
@@ -93,6 +94,7 @@ jobs:
         run: |
           docker image list
           echo "DOCKER_REPO=${ECR_REPO}/" > .env.ecr
+          pip install -r .happy/requirements.txt
           make local-sync
           make local-unit-test
 

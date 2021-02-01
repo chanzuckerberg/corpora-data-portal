@@ -87,7 +87,6 @@ oauth/pkcs12/certificate.pfx:
 .PHONY: local-init
 local-init: oauth/pkcs12/certificate.pfx .env.ecr ## Launch a new local dev env and populate it with test data.
 	docker-compose $(COMPOSE_OPTS) up -d frontend backend database oidc localstack
-	docker-compose exec -T backend pip3 install awscli
 	docker-compose exec -T backend /corpora-data-portal/scripts/setup_dev_data.sh
 
 .PHONY: local-status
@@ -96,7 +95,7 @@ local-status: ## Show the status of the containers in the dev environment.
 
 .PHONY: local-sync
 local-sync: local-init .env.ecr ## Re-sync the local-environment state after modifying library deps or docker configs
-	docker-compose $(COMPOSE_OPTS) build --build-arg frontend backend
+	docker-compose $(COMPOSE_OPTS) build frontend backend
 	docker-compose $(COMPOSE_OPTS) up -d
 
 .PHONY: local-start
@@ -158,10 +157,9 @@ local-dbconsole: ## Connect to the local postgres database.
 
 .PHONY: local-uploadjob
 local-uploadjob: ## Run the upload task with a dataset_id and dropbox_url
-	scripts/happy --env local shell corpora-data-portal processing --cmd "rm -rf /local.*"
 	scripts/happy --env local shell corpora-data-portal processing \
 		-e DATASET_ID=$(DATASET_ID) -e DROPBOX_URL=$(DROPBOX_URL) \
-		--cmd "python3 -m backend.corpora.dataset_processing.process"
+		--cmd "rm -rf /local.* && python3 -m backend.corpora.dataset_processing.process"
 
 .PHONY: local-uploadfailure
 local-uploadfailure: ## Run the upload failure lambda with a dataset id and cause

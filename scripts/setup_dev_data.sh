@@ -23,6 +23,10 @@ until $(curl --output /dev/null --silent --head ${LOCALSTACK_URL}); do
 done
 echo " done"
 
+if ! which aws; then
+    pip3 install awscli
+fi
+
 echo "Creating secretsmanager secrets"
 local_aws="aws --endpoint-url=${LOCALSTACK_URL}"
 ${local_aws} s3api create-bucket --bucket corpora-data-dev &> /dev/null || true
