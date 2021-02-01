@@ -239,6 +239,9 @@ class Stack:
 
 
 class DockerComposeStack(Stack):
+    # TODO(mbarrien): Add concept of pre-stack creation commands to run, to create
+    # our cert file.
+
     def __init__(self, stack_mgr, stack_name):
         super().__init__(stack_mgr, stack_name)
         self._meta = None
@@ -263,6 +266,8 @@ class DockerComposeStack(Stack):
 
     @property
     def status(self):
+        # docker-compose lacks a concept of a unified project status. We just create a status by taking
+        # the unique status strings across all the different containers and stringifying.
         ps_cmd = ["docker-compose"] + self.compose_args + ["ps", "-q"]
         container_list = subprocess.run(ps_cmd, check=True, stdout=subprocess.PIPE).stdout.decode()
         container_ids = [c.strip() for c in container_list.split("\n") if c.strip()]
@@ -275,6 +280,8 @@ class DockerComposeStack(Stack):
 
     @property
     def meta(self):
+        # TODO: Refactor meta. We have to fill in with dummy values that don't make sense here
+        # because the code assumes these tags exist.
         if not self._meta:
             self._meta = StackMeta(self.stack_mgr.ctx, self.stack_name)
             tags = {
@@ -421,7 +428,11 @@ class DockerComposeStackMgr:
         del self._stacks[stack_name]
 
     def add(self, stack_name):
-        if stack_name != "corpora-data-portal":
+        if stack_name != os.path.basename(os.getcwd()):
+            # Although in theory we could create multiple stacks by putting them in different projects, our docker-compose
+            # files bind global ports, and we have no way to remap them to different ports for different deployments.
+            # Online suggestions say to use an nginx proxy in front. For now we restrict it to matching the default
+            # project name, which by default matches the name of the current directory.
             raise CliError("Local stacks with name other than one matching current directory name not supported.")
         stack = DockerComposeStack(self, stack_name)
         self._stacks[stack_name] = stack
@@ -430,9 +441,16 @@ class DockerComposeStackMgr:
     @property
     def stacks(self):
         if not self._stacks:
+            # Docker compose lacks a concept of a stack. The closes you can get is the docker-compose concept of a project,
+            # which at the daemon level is a collection of containers, tied together by both having a prefix of the project name,
+            # and a Docker label docker.compose.project label. This project is how docker-compose distinguishes between
+            # multiple docker-compose stacks in different directories. By default, the project name is the name of the immediate
+            # directory the docker-compose.yml file is located in. Different projects tend to be in differently named dirs
+            # so this is how they remain separated.
             cmd = ["bash", "-c", """docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| sort | uniq"""]
             projects = subprocess.run(cmd, check=True, stdout=subprocess.PIPE).stdout.decode()
-            project_names = [p.strip() for p in projects.split("\n") if p.strip()]
+            # Currently limiting to matching current directory to filter out other docker-compose projects not created by us
+            project_names = [p.strip() for p in projects.split("\n") if p.strip() and p.strip() == os.path.basename(os.getcwd())]
             self._stacks = {project_name: DockerComposeStack(self, project_name) for project_name in project_names}
         return self._stacks
 
