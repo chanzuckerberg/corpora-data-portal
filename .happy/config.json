@@ -6,8 +6,16 @@
     "app": "data-portal",
     "environments": {
         "rdev": {
+            "stack_mgr": "tfe",
+            "orchestrator": "ecs",
             "aws_profile": "single-cell-dev",
             "secret_arn": "happy/dp-rdev-config"
+        },
+        "local": {
+            "stack_mgr": "dockercompose",
+            "orchestrator": "dockercompose",
+            "aws_profile": "REMOVE_ME",
+            "secret_arn": "REMOVE_ME"
         }
     },
     "artifact_map": {

@@ -123,11 +123,11 @@ local-clean: ## Remove everything related to the local dev environment (includin
 
 .PHONY: local-logs
 local-logs: ## Tail the logs of the dev env containers. ex: make local-logs CONTAINER=backend
-	docker-compose logs -f $(CONTAINER)
+	scripts/happy --env local logs corpora-data-portal $(CONTAINER)
 
 .PHONY: local-shell
 local-shell: ## Open a command shell in one of the dev containers. ex: make local-shell CONTAINER=frontend
-	docker-compose exec $(CONTAINER) bash
+	scripts/happy --env local shell corpora-data-portal $(CONTAINER)
 
 .PHONY: local-unit-test
 local-unit-test: ## Run backend tests in the dev environment

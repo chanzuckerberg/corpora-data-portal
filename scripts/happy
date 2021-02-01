@@ -173,8 +173,9 @@ class StackMeta:
         self.imagetag = tag
         self.updated = now
 
-        if not self.owner:
-            self.owner = resolve_owner(self.ctx)
+        if isinstance(stack_mgr, TFEStackMgr):
+            if not self.owner:
+                self.owner = resolve_owner(self.ctx)
 
         if not self.priority:
             # Find the first available priority id and use it.
@@ -196,11 +197,110 @@ class StackMeta:
 
 
 class Stack:
-    """Represents a Happy Stack"""
     def __init__(self, stack_mgr, stack_name):
         self.stack_mgr = stack_mgr
         self.stack_name = stack_name
 
+    @property
+    def outputs(self):
+        raise NotImplementedError
+
+    @property
+    def status(self):
+        raise NotImplementedError
+
+    @property
+    def meta(self):
+        raise NotImplementedError
+
+    def apply(self, wait):
+        raise NotImplementedError
+
+    def destroy(self):
+        raise NotImplementedError
+
+    def watch(self):
+        raise NotImplementedError
+
+    def cancelupdate(self):
+        raise NotImplementedError
+
+    def print_outputs(self):
+        print()
+        print("Module Outputs --")
+        for k, v in self.outputs.items():
+            print(f"{k}: {v}")
+
+
+class DockerComposeStack(Stack):
+    def __init__(self, stack_mgr, stack_name):
+        super().__init__(stack_mgr, stack_name)
+        self._meta = None
+        self.compose_file = "docker-compose.yml"
+        self.env = ".env.ecr"
+
+    @property
+    def compose_args(self):
+        args = ["--file", self.compose_file, "-p", self.stack_name]
+        if self.env:
+            args += ["--env", self.env]
+        return args
+
+    @property
+    def outputs(self):
+        return {
+            "frontend_url": "http://localhost:8000",
+            "backend_url": "http://localhost:5000",
+            "migrate_db_task_definition_arn": "",
+            "delete_db_task_definition_arn": ""
+        }
+
+    @property
+    def status(self):
+        ps_cmd = ["docker-compose"] + self.compose_args + ["ps", "-q"]
+        container_list = subprocess.run(ps_cmd, check=True, stdout=subprocess.PIPE).stdout.decode()
+        container_ids = [c.strip() for c in container_list.split("\n") if c.strip()]
+        if not container_ids:
+            return "DOWN"
+        cmd = ["docker", "inspect"] + container_ids
+        inspect = subprocess.run(cmd, check=True, stdout=subprocess.PIPE).stdout
+        containers = json.loads(inspect)
+        return str(list(set(container["State"]["Status"] for container in containers)))
+
+    @property
+    def meta(self):
+        if not self._meta:
+            self._meta = StackMeta(self.stack_mgr.ctx, self.stack_name)
+            tags = {
+                "happy/meta/owner": "self",
+                "happy/meta/imagetag": "latest",
+                "happy/meta/created-at": "dummy",
+            }
+            self._meta.load(tags)
+        return self._meta
+
+    def apply(self, wait):
+        command = ["docker-compose"] + self.compose_args + ["up", "-d"]
+        subprocess.run(command, check=True)
+        return True
+
+    def destroy(self):
+        command = ["docker-compose"] + self.compose_args + ["down"]
+        subprocess.run(command, check=True)
+        return True
+
+    def watch(self):
+        raise NotImplementedError
+
+    def cancelupdate(self):
+        raise NotImplementedError
+
+
+
+class TFEStack(Stack):
+    """Represents a Happy Stack"""
+    def __init__(self, stack_mgr, stack_name):
+        super().__init__(stack_mgr, stack_name)
         self._meta = None
 
     @property
@@ -288,16 +388,50 @@ class Stack:
             return self.workspace.wait()
         return True
 
-    def print_outputs(self):
-        print()
-        print("Module Outputs --")
-        for k, v in self.outputs.items():
-            print(f"{k}: {v}")
-
 
 class StackMgr:
     def __init__(self, ctx):
         self.ctx = ctx
+
+    def remove(self, stack_name):
+        raise NotImplementedError
+
+    def add(self, stack_name):
+        raise NotImplementedError
+
+    @property
+    def stacks(self):
+        raise NotImplementedError
+
+
+class DockerComposeStackMgr:
+    def __init__(self, ctx):
+        self.ctx = ctx
+        self._stacks = {}
+
+    def remove(self, stack_name):
+        del self._stacks[stack_name]
+
+    def add(self, stack_name):
+        if stack_name != "corpora-data-portal":
+            raise CliError("Local stacks with name other than one matching current directory name not supported.")
+        stack = DockerComposeStack(self, stack_name)
+        self._stacks[stack_name] = stack
+        return stack
+
+    @property
+    def stacks(self):
+        if not self._stacks:
+            cmd = ["bash", "-c", """docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| sort | uniq"""]
+            projects = subprocess.run(cmd, check=True, stdout=subprocess.PIPE).stdout.decode()
+            project_names = [p.strip() for p in projects.split("\n") if p.strip()]
+            self._stacks = {project_name: DockerComposeStack(self, project_name) for project_name in project_names}
+        return self._stacks
+
+
+class TFEStackMgr(StackMgr):
+    def __init__(self, ctx):
+        super().__init__(ctx)
         self.config = ctx.obj["config"]
         self.write_path = f"/happy/{self.config.env}/stacklist"
         # self.read_prefix = f"/happy/{self.config.env}/stacks"
@@ -335,7 +469,7 @@ class StackMgr:
         if not self.get_stack_workspace(stack_name):
             raise Exception("Could not find newly created workspace for our stack")
 
-        stack = Stack(self, stack_name)
+        stack = TFEStack(self, stack_name)
         self._stacks[stack_name] = stack
         return stack
 
@@ -359,13 +493,19 @@ class StackMgr:
         param = param_client.get_parameter(Name=self.write_path)
         stacklist = json.loads(param["Parameter"]["Value"])
         for stack_name in stacklist:
-            self._stacks[stack_name] = Stack(self, stack_name)
+            self._stacks[stack_name] = TFEStack(self, stack_name)
         return self._stacks
 
     def get_stack_workspace(self, stack_name):
         workspace_name = f"{self.config.env}-{stack_name}"
         tfe_api = self.get_tfe_api()
         return tfe_api.workspaces.get(workspace_name)
+
+
+STACK_MGRS = {
+    "tfe": TFEStackMgr,
+    "dockercompose": DockerComposeStackMgr,
+}
 
 
 # Singleton for handling aws sessions since this is oddly slow.
@@ -518,7 +658,7 @@ class TFEWorkspace:
             self.tfc.workspace_vars.update(self.workspace_id, self.vars[category][key]["id"], var_data)
         else:
             self.tfc.workspace_vars.create(self.workspace_id, var_data)
-    
+
     def reset_cache(self):
         self._vars = None
         self._outputs = None
@@ -616,8 +756,8 @@ def cli(ctx, profile, env):
     ctx.obj["config"] = config
     ctx.obj["aws_profile"] = profile
     # These aren't lazy-instantiating!
-    ctx.obj["stack_mgr"] = StackMgr(ctx)
-    ctx.obj["orchestrator"] = Orchestrator(ctx)
+    ctx.obj["stack_mgr"] = STACK_MGRS[config.stack_mgr](ctx)
+    ctx.obj["orchestrator"] = ORCHESTRATORS[config.orchestrator](ctx)
 
 
 class SecretMgr:
@@ -639,14 +779,12 @@ class SecretMgr:
 def run_aws_cmd(ctx, cmd, return_output=True, json_output=True):
     command = ["aws", "--profile", AwsSession.get_session(ctx).profile_name, "--region", AwsSession.get_config(ctx).region_name]
     command.extend(cmd)
+    completed_process = subprocess.run(command, check=True, stdout=(return_output and subprocess.PIPE) or None)
     if return_output:
-        output = subprocess.check_output(command)
-    else:
-        subprocess.check_call(command)
-        return
-    if not json_output:
-        return output
-    return json.loads(output)
+        stdout = completed_process.stdout
+        if json_output:
+            return json.loads(steout)
+        return stdout
 
 
 def resolve_owner(ctx):
@@ -665,6 +803,36 @@ def generate_tag(ctx):
 class Orchestrator:
     def __init__(self, ctx):
         self.ctx = ctx
+
+    def shell(self, stack_name, service):
+        raise NotImplementedError
+
+    def logs(self, stack_name, service, since):
+        raise NotImplementedError
+
+    def run_task(self, taskdef_arn, wait=False, show_logs=True):
+        raise NotImplementedError
+
+
+class DockerComposeOrchestrator(Orchestrator):
+    def shell(self, stack_name, service):
+        command = ["docker-compose", "-p", stack_name, "exec", service, "bash"]
+        os.execvp("docker-compose", command)
+
+    def logs(self, stack_name, service, since):
+        if since:
+            print("Warning: Ignoring --since argument")
+        command = ["docker-compose", "-p", stack_name, "logs", "-f", service]
+        subprocess.run(command, check=True)
+
+    def run_task(self, taskdef_arn, wait=False, show_logs=True):
+        if taskdef_arn:
+            raise NotImplementedError
+
+
+class ECSOrchestrator(Orchestrator):
+    def __init__(self, ctx):
+        super().__init__(ctx)
         self._secrets = None
 
     @property
@@ -772,7 +940,7 @@ class Orchestrator:
 
 
 class ArtifactBuilder:
-    """Builds artifacts such asx Docker containers. For now, this is hard coded to use docker-compose as the backend."""
+    """Builds artifacts such as Docker containers. For now, this is hard coded to use docker-compose as the backend."""
 
     DEFAULT_CONFIG = {
         "compose_file": "docker-compose.yml",
@@ -790,16 +958,22 @@ class ArtifactBuilder:
         if self.config["env"]:
             compose_args += ["--env", self.config["env"]]
         cmd = ["docker-compose"] + compose_args + ["build"]
-        subprocess.check_call(cmd, env=env)
+        subprocess.run(cmd, check=True, env=env)
 
         cmd = ["docker-compose"] + compose_args + ["config"]
-        config_file = subprocess.check_output(cmd)
+        config_file = subprocess.run(cmd, check=True, stdout=subprocess.PIPE).stdout
         result = yaml.load(config_file, Loader=yaml.Loader)
         images = {}
         for service_name, service in result["services"].items():
             if "build" in service:
                 images[service_name] = service["image"]
         return images
+
+
+ORCHESTRATORS = {
+    "dockercompose": DockerComposeOrchestrator,
+    "ecs": ECSOrchestrator
+}
 
 
 def run_tasks(ctx, stack, task_type, wait=False, show_logs=True):
@@ -1023,11 +1197,11 @@ def push(ctx, tag, extra_tag, compose_env):
     for artifact_id, registry in artifact_map.items():
         image = artifacts[artifact_id]
         for current_tag in all_tags:
-            subprocess.check_call(["docker", "tag", f"{image}:latest", f"{registry}:{current_tag}"])
+            subprocess.run(["docker", "tag", f"{image}:latest", f"{registry}:{current_tag}"], check=True)
     print("Pushing images...")
     for registry in artifact_map.values():
         for current_tag in all_tags:
-            subprocess.check_call(["docker", "push", f"{registry}:{current_tag}"])
+            subprocess.run(["docker", "push", f"{registry}:{current_tag}"], check=True)
     print(f"Built and pushed docker images with tags: {all_tags}")
 
 
