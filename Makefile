@@ -15,32 +15,23 @@ lint:
 	flake8 backend tests
 
 .PHONY: unit-test
-unit-test:
-	-docker run -d -p 5432:5432 --name test_db -e POSTGRES_PASSWORD=test_pw postgres:13.0
-	PYTHONWARNINGS=ignore:ResourceWarning python3 -m coverage run \
-		-m unittest discover --start-directory tests/unit/backend --top-level-directory . --verbose; \
-	test_result=$$?; \
-	$(MAKE) clean_test_db; \
-	exit $$test_result
+unit-test: local-unit-test
+	# Keeping old target name for reverse comatibility
 
-.PHONY: unittest
-unittest:
+.PHONY: container-unittest
+container-unittest:
+	# This target is intended to be run INSIDE a container
 	DEPLOYMENT_STAGE=test PYTHONWARNINGS=ignore:ResourceWarning python3 -m coverage run \
 		-m unittest discover --start-directory tests/unit/backend --top-level-directory . --verbose;
 
-clean_test_db:
-	-docker stop test_db
-	-docker rm test_db
-
 .PHONY: functional-test
-functional-test:
+functional-test: local-functional-test
+	# Keeping old target name for reverse comatibility
+
+.PHONY: container-functionaltest
+container-functionaltest:
+	# This target is intended to be run INSIDE a container
 	python3 -m unittest discover --start-directory tests/functional --top-level-directory . --verbose
-
-.PHONY: local-database
-local-database: clean_test_db
-	docker run -d -p 5432:5432 --name test_db -e POSTGRES_PASSWORD=test_pw postgres:13.0
-	python3 ./scripts/populate_db.py
-
 
 .PHONY: local-backend
 local-backend:
@@ -133,10 +124,10 @@ local-shell: ## Open a command shell in one of the dev containers. ex: make loca
 local-unit-test: ## Run backend tests in the dev environment
 	@if [ -z "$(path)" ]; then \
         echo "Running all tests"; \
-		docker-compose exec -T backend bash -c "cd /corpora-data-portal && make unittest"; \
+		docker-compose exec -T backend bash -c "cd /corpora-data-portal && make container-unittest"; \
 	else \
 		echo "Running test(s): $(path)"; \
-		docker-compose exec -T backend bash -c "cd /corpora-data-portal && python -m unittest $(path)"; \
+		docker-compose exec -T backend bash -c "cd /corpora-data-portal && python -m container-unittest $(path)"; \
 	fi
 	if [ ! -z "$(CODECOV_TOKEN)" ]; then \
 		ci_env=$$(bash <(curl -s https://codecov.io/env)); \
@@ -145,7 +136,7 @@ local-unit-test: ## Run backend tests in the dev environment
 
 .PHONY: local-functional-test
 local-functional-test: ## Run functional tests in the dev environment
-	docker-compose exec -T backend bash -c "cd /corpora-data-portal && export DEPLOYMENT_STAGE=test && make functional-test"
+	docker-compose exec -T backend bash -c "cd /corpora-data-portal && export DEPLOYMENT_STAGE=test && make container-functionaltest"
 
 .PHONY: local-smoke-test
 local-smoke-test: ## Run frontend/e2e tests in the dev environment
