@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import shlex
 from string import Template
 import subprocess
 import tarfile
@@ -845,9 +846,9 @@ class DockerComposeOrchestrator(Orchestrator):
         exec_flags = []
         if cmd:
             exec_flags = ["-T"]  # Disable allocating TTY
-            command_extra = ["-c", cmd]
+            command_extra = ["-c", f"eval {shlex.quote(cmd)}"]
         for env_var in env_vars:
-            exec_flags += ["-e", env_var]
+            exec_flags += ["-e", shlex.quote(env_var)]
         command = ["docker-compose", "-p", stack_name, "exec"] + exec_flags + [service, "bash"] + command_extra
         os.execvp("docker-compose", command)
 
@@ -898,12 +899,11 @@ class ECSOrchestrator(Orchestrator):
             print(f"Connecting to {container['arn']}")
             exec_flags = []
             for env_var in env_vars:
-                # TODO(mbarrien): This won't work if env_var has single quotes
-                exec_flags += ["-e", f"'{env_var}'"]
+                exec_flags += ["-e", shlex.quote(env_var)]
             command = ["ssh", "-t", ip, "sudo", "docker", "exec"] + exec_flags + ["-ti", container['container'], "/bin/bash"]
             if cmd:
-                # TODO(mbarrien): This won't work if cmd has single quotes
-                command += ["-c", f"'{cmd}'"]
+                command += ["-c", shlex.quote(f"eval {shlex.quote(cmd)}")]
+            print(" ".join(command))
             os.execvp("ssh", command)
 
     def logs(self, stack_name, service, since):
@@ -1049,7 +1049,7 @@ def migrate(ctx, stack_name, reset):
 @click.argument("service")
 @click.option("--instanceid", help="Choose a specific instance")
 @click.option("--cmd", help="Command to run. If provided, runs this commands and exits, else interactivate bash shell")
-@click.option("--env", "-e", help="Set environment variables", multiple=true)
+@click.option("--env", "-e", help="Set environment variables", multiple=True)
 @click.pass_context
 def shell(ctx, stack_name, service, instanceid, cmd, env):
     orchestrator = ctx.obj["orchestrator"]
