@@ -140,7 +140,8 @@ local-unit-test: ## Run backend tests in the dev environment
 	fi
 	if [ ! -z "$(CODECOV_TOKEN)" ]; then \
 		ci_env=$$(bash <(curl -s https://codecov.io/env)); \
-		docker-compose exec $$ci_env -T backend bash -c "cd /corpora-data-portal && bash <(curl -s https://codecov.io/bash) -cF backend,python,unitTest"; \
+		scripts/happy --env local shell corpora-data-portal backend $$ci_env \
+			--cmd "cd /corpora-data-portal && bash <(curl -s https://codecov.io/bash) -cF backend,python,unitTest"; \
 	fi
 
 .PHONY: local-functional-test
@@ -158,7 +159,9 @@ local-dbconsole: ## Connect to the local postgres database.
 .PHONY: local-uploadjob
 local-uploadjob: ## Run the upload task with a dataset_id and dropbox_url
 	scripts/happy --env local shell corpora-data-portal processing --cmd "rm -rf /local.*"
-	docker-compose exec -T -e DATASET_ID=$(DATASET_ID) -e DROPBOX_URL=$(DROPBOX_URL) processing python3 -m backend.corpora.dataset_processing.process
+	scripts/happy --env local shell corpora-data-portal processing \
+		-e DATASET_ID=$(DATASET_ID) -e DROPBOX_URL=$(DROPBOX_URL) \
+		--cmd "python3 -m backend.corpora.dataset_processing.process"
 
 .PHONY: local-uploadfailure
 local-uploadfailure: ## Run the upload failure lambda with a dataset id and cause

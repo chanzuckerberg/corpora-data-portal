@@ -3,7 +3,7 @@ name: Push Tests
 on:
   push:
     branches:
-      - happy/cicd-2
+      - happy/local
   #     - main
   # pull_request:
   #   branches: "*"
