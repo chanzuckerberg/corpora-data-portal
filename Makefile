@@ -101,11 +101,11 @@ local-sync: local-init .env.ecr ## Re-sync the local-environment state after mod
 
 .PHONY: local-start
 local-start: .env.ecr ## Start a local dev environment that's been stopped.
-	docker-compose $(COMPOSE_OPTS) up -d
+	scripts/happy --env local resume corpora-data-portal
 
 .PHONY: local-stop
 local-stop: ## Stop the local dev environment.
-	docker-compose stop
+	scripts/happy --env local pause corpora-data-portal
 
 .PHONY: local-clean
 local-clean: ## Remove everything related to the local dev environment (including db data!)
@@ -133,10 +133,10 @@ local-shell: ## Open a command shell in one of the dev containers. ex: make loca
 local-unit-test: ## Run backend tests in the dev environment
 	@if [ -z "$(path)" ]; then \
         echo "Running all tests"; \
-		docker-compose exec -T backend bash -c "cd /corpora-data-portal && make unittest"; \
+		scripts/happy --env local shell corpora-data-portal backend --cmd "cd /corpora-data-portal && make unittest"; \
 	else \
 		echo "Running test(s): $(path)"; \
-		docker-compose exec -T backend bash -c "cd /corpora-data-portal && python -m unittest $(path)"; \
+		scripts/happy --env local shell corpora-data-portal backend --cmd "cd /corpora-data-portal && python -m unittest $(path)"; \
 	fi
 	if [ ! -z "$(CODECOV_TOKEN)" ]; then \
 		ci_env=$$(bash <(curl -s https://codecov.io/env)); \
@@ -145,11 +145,11 @@ local-unit-test: ## Run backend tests in the dev environment
 
 .PHONY: local-functional-test
 local-functional-test: ## Run functional tests in the dev environment
-	docker-compose exec -T backend bash -c "cd /corpora-data-portal && export DEPLOYMENT_STAGE=test && make functional-test"
+	scripts/happy --env local shell corpora-data-portal backend --cmd "cd /corpora-data-portal && export DEPLOYMENT_STAGE=test && make functional-test"
 
 .PHONY: local-smoke-test
 local-smoke-test: ## Run frontend/e2e tests in the dev environment
-	docker-compose exec -T frontend make smoke-test-with-local-dev
+	scripts/happy --env local shell corpora-data-portal frontend --cmd "make smoke-test-with-local-dev"
 
 .PHONY: local-dbconsole
 local-dbconsole: ## Connect to the local postgres database.
@@ -157,7 +157,7 @@ local-dbconsole: ## Connect to the local postgres database.
 
 .PHONY: local-uploadjob
 local-uploadjob: ## Run the upload task with a dataset_id and dropbox_url
-	docker-compose exec -T processing sh -c "rm -rf /local.*"
+	scripts/happy --env local shell corpora-data-portal processing --cmd "rm -rf /local.*"
 	docker-compose exec -T -e DATASET_ID=$(DATASET_ID) -e DROPBOX_URL=$(DROPBOX_URL) processing python3 -m backend.corpora.dataset_processing.process
 
 .PHONY: local-uploadfailure

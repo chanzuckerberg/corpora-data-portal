@@ -220,10 +220,16 @@ class Stack:
         raise NotImplementedError
 
     def watch(self):
-        raise NotImplementedError
+        raise CliError("Watching not supported.")
 
     def cancelupdate(self):
-        raise NotImplementedError
+        raise CliError("Canceling update not supported.")
+
+    def pause(self):
+        raise CliError("Pausing not supported.")
+
+    def resume(self):
+        raise CliError("Resuming not supported.")
 
     def print_outputs(self):
         print()
@@ -289,11 +295,13 @@ class DockerComposeStack(Stack):
         subprocess.run(command, check=True)
         return True
 
-    def watch(self):
-        raise NotImplementedError
+    def pause(self):
+        command = ["docker-compose"] + self.compose_args + ["stop"]
+        subprocess.run(command, check=True)
+        return TrueError
 
-    def cancelupdate(self):
-        raise NotImplementedError
+    def resume(self, wait):
+        return self.apply(wait)
 
 
 
@@ -804,7 +812,7 @@ class Orchestrator:
     def __init__(self, ctx):
         self.ctx = ctx
 
-    def shell(self, stack_name, service):
+    def shell(self, stack_name, service, cmd):
         raise NotImplementedError
 
     def logs(self, stack_name, service, since):
@@ -815,8 +823,12 @@ class Orchestrator:
 
 
 class DockerComposeOrchestrator(Orchestrator):
-    def shell(self, stack_name, service):
-        command = ["docker-compose", "-p", stack_name, "exec", service, "bash"]
+    def shell(self, stack_name, service, cmd):
+        exec_flags = []
+        if cmd:
+            exec_flags = ["-T"]  # Disable allocating TTY
+            command_extra = ["-c", cmd]
+        command = ["docker-compose", "-p", stack_name, "exec"] + exec_flags + [service, "bash"] + command_extra
         os.execvp("docker-compose", command)
 
     def logs(self, stack_name, service, since):
@@ -841,7 +853,7 @@ class ECSOrchestrator(Orchestrator):
             self._secrets = self.ctx.obj["secret_mgr"].secrets
         return self._secrets
 
-    def shell(self, stack_name, service):
+    def shell(self, stack_name, service, cmd):
         cluster_arn = self.secrets["cluster_arn"]
         service_name = f"{stack_name}-{service}"
 
@@ -864,7 +876,11 @@ class ECSOrchestrator(Orchestrator):
             hostinfo = ec2_client.describe_instances(InstanceIds=[ec2_instance])
             ip = hostinfo["Reservations"][0]["Instances"][0]["PrivateIpAddress"]
             print(f"Connecting to {container['arn']}")
-            os.execvp("ssh", ["ssh", "-t", ip, "sudo", "docker", "exec", "-ti", container['container'], "/bin/bash"])
+            command = ["ssh", "-t", ip, "sudo", "docker", "exec", "-ti", container['container'], "/bin/bash"]
+            if cmd:
+                # TODO(mbarrien): This won't work if cmd has single quotes
+                command += ["-c", f"'{cmd}'"]
+            os.execvp("ssh", command)
 
     def logs(self, stack_name, service, since):
         run_aws_cmd(
@@ -1008,10 +1024,12 @@ def migrate(ctx, stack_name, reset):
 @click.argument("stack_name")
 @click.argument("service")
 @click.option("--instanceid", help="Choose a specific instance")
+@click.option("--cmd", help="Command to run. If provided, runs this commands and exits, else interactivate bash shell")
 @click.pass_context
-def shell(ctx, stack_name, service, instanceid):
+def shell(ctx, stack_name, service, instanceid, cmd):
+    # TODO(mbarrien): Add support for passing build args and env args?
     orchestrator = ctx.obj["orchestrator"]
-    orchestrator.shell(stack_name, service)
+    orchestrator.shell(stack_name, service, cmd)
 
 @cli.command()
 @click.argument("stack_name")
@@ -1093,6 +1111,29 @@ def update(ctx, stack_name, tag, wait, skip_migrations):
     if not skip_migrations:
         ctx.invoke(migrate, stack_name=stack_name)
     stack.print_outputs()
+
+
+@cli.command()
+@click.argument("stack_name")
+@click.pass_context
+def pause(ctx, stack_name):
+    """Pauses a stack; stop the containers but do not destroy data. Only valid for local environments."""
+    print(f"Pausing {stack_name}")
+    stack_mgr = ctx.obj["stack_mgr"]
+    stack = stack_mgr.stacks[stack_name]
+    stack.pause()
+
+
+@cli.command()
+@click.argument("stack_name")
+@click.option("--wait/--no-wait", is_flag=True, default=True, help="wait for this to complete")
+@click.pass_context
+def resume(ctx, stack_name, wait):
+    """Resume a paused stack; start existing paused containers using existing data. Only valid for local environments."""
+    print(f"Resuming {stack_name}")
+    stack_mgr = ctx.obj["stack_mgr"]
+    stack = stack_mgr.stacks[stack_name]
+    stack.resume(wait)
 
 
 @cli.command()
